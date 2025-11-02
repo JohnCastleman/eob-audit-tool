@@ -109,7 +109,8 @@ def parse_html_to_json(html_path):
     
     claims = []
     for row in parser.rows:
-        if len(row) < 6 or row[1] == 'Date' or '2025' not in str(row[1]):
+        # Skip rows with insufficient columns or header rows
+        if len(row) < 6 or row[1] == 'Date':
             continue
         
         date_str = row[1].strip()

@@ -27,6 +27,13 @@ def process_directory(directory, force=False):
     """Process all HTML and PDF files in a directory"""
     directory = Path(directory)
     
+    # Check if output file already exists
+    folder_name = directory.name
+    composite_md = directory / f"{folder_name}.md"
+    if composite_md.exists() and not force:
+        print(f"Skipping {composite_md.name} (already exists, use --force to overwrite)")
+        return
+    
     # Find HTML and PDF files
     html_files = list(directory.glob('*.html'))
     pdf_files = list(directory.glob('*.pdf'))
@@ -65,6 +72,8 @@ def process_directory(directory, force=False):
         # Show skip message if output was written to stderr (skip message)
         if result.stderr and 'Skipping' in result.stderr:
             print(f"    {result.stderr.strip()}")
+            # Still include the existing output file in merge (skip only applies to writing output, not using as input)
+            all_json_files.append(str(json_file))
             continue
         
         all_json_files.append(str(json_file))
@@ -113,6 +122,8 @@ def process_directory(directory, force=False):
         # Show skip message if output was written to stderr (skip message)
         if result.stderr and 'Skipping' in result.stderr:
             print(f"    {result.stderr.strip()}")
+            # Still include the existing output file in merge (skip only applies to writing output, not using as input)
+            all_json_files.append(str(json_file))
             continue
         
         all_json_files.append(str(json_file))

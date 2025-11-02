@@ -71,6 +71,13 @@ def generate_markdown_from_json(json_data, title, include_source_col=False, sort
             plan_payment_display = format_amount_for_display(claim.get('Plan Payment', ''))
             you_may_owe_display = format_amount_for_display(claim.get('You May Owe', ''))
             md_content += f"| {date_display} | {claim.get('Member', '')} | {claim.get('Facility/Physician', '')} | {claim.get('Service', '')} | {billed_display} | {plan_payment_display} | {you_may_owe_display} | {claim.get('Status', '')} | {claim.get('In PDF/HTML?', '')} |\n"
+        
+        # Add counts row for composite files
+        pdf_only = sum(1 for c in json_data if c.get('In PDF/HTML?') == 'PDF')
+        html_only = sum(1 for c in json_data if c.get('In PDF/HTML?') == 'HTML')
+        both = sum(1 for c in json_data if c.get('In PDF/HTML?') == 'BOTH')
+        total = len(json_data)
+        md_content += f"\n**Total: {total} claims** | PDF only: {pdf_only} | HTML only: {html_only} | BOTH: {both}\n"
     else:
         md_content += "| Date | Member | Facility/Physician | Service | Billed Amt | Plan Payment | You May Owe | Status |\n"
         md_content += "|------|--------|-------------------|---------|------------|--------------|-------------|--------|\n"
@@ -81,6 +88,10 @@ def generate_markdown_from_json(json_data, title, include_source_col=False, sort
             plan_payment_display = format_amount_for_display(claim.get('Plan Payment', ''))
             you_may_owe_display = format_amount_for_display(claim.get('You May Owe', ''))
             md_content += f"| {date_display} | {claim.get('Member', '')} | {claim.get('Facility/Physician', '')} | {claim.get('Service', '')} | {billed_display} | {plan_payment_display} | {you_may_owe_display} | {claim.get('Status', '')} |\n"
+        
+        # Add total claims count for individual files
+        total = len(json_data)
+        md_content += f"\n**Total: {total} claims**\n"
     
     # Add references to sub-files if provided
     if sub_files:
