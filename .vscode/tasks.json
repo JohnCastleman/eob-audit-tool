@@ -1,0 +1,196 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Convert PDF to JSON",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "pdf_to_json.py",
+                "${file}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Convert PDF to JSON (save to file)",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "pdf_to_json.py",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.json"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Convert Selected PDF to JSON",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "pdf_to_json.py",
+                "${input:pdfFile}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Convert HTML to JSON",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "html_to_json.py",
+                "${file}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Convert HTML to JSON (save to file)",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "html_to_json.py",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.json"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Convert Selected HTML to JSON",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "html_to_json.py",
+                "${input:htmlFile}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Convert JSON to Markdown",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "json_to_md.py",
+                "${file}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Convert JSON to Markdown (save to file)",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "json_to_md.py",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.md"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Convert Selected JSON to Markdown",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "json_to_md.py",
+                "${input:jsonFile}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Process EOB Audit Directory",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "process_eob_audit.py",
+                "${fileDirname}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Process EOB Audit Directory (manual)",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "process_eob_audit.py",
+                "${input:directoryPath}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        }
+    ],
+    "inputs": [
+        {
+            "id": "pdfFile",
+            "type": "promptString",
+            "description": "Enter the path to the PDF file",
+            "default": "${relativeFile}"
+        },
+        {
+            "id": "htmlFile",
+            "type": "promptString",
+            "description": "Enter the path to the HTML file",
+            "default": "${relativeFile}"
+        },
+        {
+            "id": "jsonFile",
+            "type": "promptString",
+            "description": "Enter the path to the JSON file",
+            "default": "${relativeFile}"
+        },
+        {
+            "id": "directoryPath",
+            "type": "promptString",
+            "description": "Enter the path to the directory to process (relative to workspace)"
+        }
+    ]
+}
+
