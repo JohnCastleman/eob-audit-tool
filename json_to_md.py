@@ -53,31 +53,59 @@ def generate_markdown_from_json(json_data, title, include_source_col=False, sort
     """
     # Sort claims by date if sort_reverse is enabled
     if sort_reverse:
-        try:
-            json_data = sorted(json_data, key=lambda x: datetime.strptime(x['Date'], '%Y-%m-%d'), reverse=True)
-        except (KeyError, ValueError):
-            # If sorting fails, use unsorted data
-            pass
+        def sort_key(claim):
+            """Get sort key for claim, handling invalid dates"""
+            date_str = claim.get('Date', '')
+            try:
+                return datetime.strptime(date_str, '%Y-%m-%d')
+            except (ValueError, TypeError, KeyError):
+                # Invalid date - put at end (use a very old date)
+                return datetime(1900, 1, 1)
+        
+        json_data = sorted(json_data, key=sort_key, reverse=True)
     
     md_content = f"# {title}\n\n"
     
     if include_source_col:
-        md_content += "| Date | Member | Facility/Physician | Service | Billed Amt | Plan Payment | You May Owe | Status | In PDF/HTML? |\n"
-        md_content += "|------|--------|-------------------|---------|------------|--------------|-------------|--------|--------------|\n"
+        md_content += "| Date | Member | Facility/Physician | Service | Billed Amt | Plan Payment | You May Owe | Status | In HTML | In PDF |\n"
+        md_content += "|------|--------|-------------------|---------|------------|--------------|-------------|--------|---------|-------|\n"
         
         for claim in json_data:
             date_display = format_date_for_display(claim.get('Date', ''))
             billed_display = format_amount_for_display(claim.get('Billed Amt', ''))
             plan_payment_display = format_amount_for_display(claim.get('Plan Payment', ''))
             you_may_owe_display = format_amount_for_display(claim.get('You May Owe', ''))
-            md_content += f"| {date_display} | {claim.get('Member', '')} | {claim.get('Facility/Physician', '')} | {claim.get('Service', '')} | {billed_display} | {plan_payment_display} | {you_may_owe_display} | {claim.get('Status', '')} | {claim.get('In PDF/HTML?', '')} |\n"
+            
+            # Determine PDF and HTML checkbox values
+            source = claim.get('In PDF/HTML?', '')
+            pdf_checkbox = ''
+            html_checkbox = ''
+            
+            if source == 'PDF':
+                pdf_checkbox = '☑'
+                html_checkbox = ''
+            elif source == 'HTML':
+                pdf_checkbox = ''
+                html_checkbox = '☑'
+            elif source == '(HTML)':
+                pdf_checkbox = ''
+                html_checkbox = '(☑)'  # Checkbox in parentheses for HTML claims without PDF icon
+            elif source == 'BOTH':
+                pdf_checkbox = '☑'
+                html_checkbox = '☑'
+            
+            md_content += f"| {date_display} | {claim.get('Member', '')} | {claim.get('Facility/Physician', '')} | {claim.get('Service', '')} | {billed_display} | {plan_payment_display} | {you_may_owe_display} | {claim.get('Status', '')} | {html_checkbox} | {pdf_checkbox} |\n"
         
         # Add counts row for composite files
         pdf_only = sum(1 for c in json_data if c.get('In PDF/HTML?') == 'PDF')
         html_only = sum(1 for c in json_data if c.get('In PDF/HTML?') == 'HTML')
+        html_no_pdf = sum(1 for c in json_data if c.get('In PDF/HTML?') == '(HTML)')
         both = sum(1 for c in json_data if c.get('In PDF/HTML?') == 'BOTH')
         total = len(json_data)
-        md_content += f"\n**Total: {total} claims** | PDF only: {pdf_only} | HTML only: {html_only} | BOTH: {both}\n"
+        if html_no_pdf > 0:
+            md_content += f"\n**Total: {total} claims** | PDF only: {pdf_only} | HTML only: {html_only} | HTML (no PDF icon): {html_no_pdf} | BOTH: {both}\n"
+        else:
+            md_content += f"\n**Total: {total} claims** | PDF only: {pdf_only} | HTML only: {html_only} | BOTH: {both}\n"
     else:
         md_content += "| Date | Member | Facility/Physician | Service | Billed Amt | Plan Payment | You May Owe | Status |\n"
         md_content += "|------|--------|-------------------|---------|------------|--------------|-------------|--------|\n"

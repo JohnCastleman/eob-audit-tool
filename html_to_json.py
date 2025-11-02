@@ -59,44 +59,162 @@ def normalize_amount(amount_str):
     return normalized
 
 class HTMLTableParser(HTMLParser):
-    """Parse HTML table into structured data"""
+    """Parse HTML table into structured data - supports both traditional and mobile-stacked formats"""
     def __init__(self):
         super().__init__()
         self.in_tbody = False
         self.in_row = False
         self.current_row = []
-        self.rows = []
+        self.rows = []  # For traditional table format
         self.in_data_cell = False
         self.cell_data = []
         
+        # For mobile-stacked (key-value) format
+        self.current_key = None
+        self.current_value = None
+        self.in_key_cell = False
+        self.in_value_cell = False
+        self.current_claim = {}
+        self.claims = []  # For mobile-stacked format
+        self.current_tr_class = None  # Track current row's class
+        self.in_a_tag = False  # Track if we're inside an <a> tag
+        self.current_a_title = None  # Track title attribute of current <a> tag
+        
     def handle_starttag(self, tag, attrs):
+        attrs_dict = dict(attrs)
+        
         if tag == 'tbody':
             self.in_tbody = True
-        elif tag == 'tr' and self.in_tbody:
-            self.in_row = True
-            self.current_row = []
-        elif tag == 'td' and self.in_row:
-            self.in_data_cell = True
-            self.cell_data = []
-            
+        elif tag == 'tr':
+            if self.in_tbody:
+                self.in_row = True
+                self.current_row = []
+                # Track row class for mobile-stacked format
+                self.current_tr_class = attrs_dict.get('class', '')
+                # Check if this is a key-value row format (mobile-stacked)
+                if 'st-key' in self.current_tr_class or 'st-val' in self.current_tr_class:
+                    self.current_key = None
+                    self.current_value = None
+        elif tag == 'td':
+            if self.in_row:
+                # Check for mobile-stacked format
+                cell_class = attrs_dict.get('class', '')
+                if 'st-key' in cell_class:
+                    self.in_key_cell = True
+                    self.in_data_cell = False
+                    self.cell_data = []
+                elif 'st-val' in cell_class:
+                    self.in_value_cell = True
+                    self.in_data_cell = False
+                    self.cell_data = []
+                else:
+                    # Traditional table format
+                    self.in_data_cell = True
+                    self.cell_data = []
+        elif tag == 'a':
+            if self.in_value_cell:
+                self.in_a_tag = True
+                # Extract title attribute if present
+                attrs_dict = dict(attrs)
+                self.current_a_title = attrs_dict.get('title', '')
+                        
     def handle_endtag(self, tag):
         if tag == 'tbody':
             self.in_tbody = False
-        elif tag == 'tr' and self.in_row:
-            if len(self.current_row) >= 6:
-                self.rows.append(self.current_row.copy())
-            self.in_row = False
-            self.current_row = []
-        elif tag == 'td' and self.in_data_cell:
-            text = ' '.join(self.cell_data).strip()
-            text = unescape(text)
-            text = re.sub(r'\s+', ' ', text)
-            self.current_row.append(text)
-            self.cell_data = []
-            self.in_data_cell = False
-            
+        elif tag == 'tr':
+            if self.in_row:
+                # Traditional table format
+                if len(self.current_row) >= 6:
+                    self.rows.append(self.current_row.copy())
+                self.in_row = False
+                self.current_row = []
+                
+                # Mobile-stacked format: save current key-value pair
+                if self.current_key and self.current_value is not None:
+                    key_lower = self.current_key.lower().strip()
+                    
+                    # If this is a Date field and we already have a claim with a date, save the previous claim
+                    if 'date' in key_lower and 'date' in self.current_claim and self.current_claim['date']:
+                        self.claims.append(self.current_claim.copy())
+                        self.current_claim = {}
+                    
+                    # Map keys to our schema
+                    if 'date' in key_lower:
+                        self.current_claim['date'] = self.current_value.strip()
+                    elif 'member' in key_lower:
+                        self.current_claim['member'] = self.current_value.strip()
+                    elif 'facility' in key_lower or 'physician' in key_lower or 'merchant' in key_lower:
+                        # Only set if not already set (prefer first occurrence)
+                        if 'provider' not in self.current_claim:
+                            self.current_claim['provider'] = self.current_value.strip()
+                    elif 'billed' in key_lower and 'amount' in key_lower:
+                        self.current_claim['billed'] = self.current_value.strip()
+                    elif 'plan' in key_lower and 'payment' in key_lower:
+                        self.current_claim['plan_payment'] = self.current_value.strip()
+                    elif 'you may owe' in key_lower or 'your cost' in key_lower:
+                        self.current_claim['you_owe'] = self.current_value.strip()
+                    elif 'status' in key_lower:
+                        self.current_claim['status'] = self.current_value.strip()
+                    elif 'eob' in key_lower or 'reference' in key_lower:
+                        # EOB number is in the <a> tag's title attribute
+                        # The title was captured when we saw the <a> tag in the value cell
+                        # Use the stored title if available, otherwise try to extract from value text
+                        eob_value = ''
+                        if self.current_a_title:
+                            eob_value = self.current_a_title
+                        elif self.current_value:
+                            # Try to extract from value text as fallback
+                            eob_value = self.current_value.strip()
+                        self.current_claim['eob_reference'] = eob_value
+                        # Don't reset current_a_title yet - it might be used for this key-value pair
+                    
+                    # Check if this row indicates end of a claim (has "Details" button or extra-border class)
+                    if (self.current_value and 'details' in self.current_value.lower()) or 'extra-border' in str(self.current_tr_class):
+                        # Save claim if it has a date
+                        if 'date' in self.current_claim and self.current_claim['date']:
+                            self.claims.append(self.current_claim.copy())
+                            self.current_claim = {}
+                
+                self.current_key = None
+                self.current_value = None
+                # Reset current_a_title when moving to next row
+                self.current_a_title = None
+        elif tag == 'td':
+            if self.in_data_cell:
+                # Traditional format
+                text = ' '.join(self.cell_data).strip()
+                text = unescape(text)
+                text = re.sub(r'\s+', ' ', text)
+                self.current_row.append(text)
+                self.cell_data = []
+                self.in_data_cell = False
+            elif self.in_key_cell:
+                # Mobile-stacked format: key
+                self.current_key = ' '.join(self.cell_data).strip()
+                self.current_key = unescape(self.current_key)
+                self.current_key = re.sub(r'\s+', ' ', self.current_key)
+                self.cell_data = []
+                self.in_key_cell = False
+            elif self.in_value_cell:
+                # Mobile-stacked format: value
+                text = ' '.join(self.cell_data).strip()
+                text = unescape(text)
+                text = re.sub(r'\s+', ' ', text)
+                self.current_value = text
+                self.cell_data = []
+                self.in_value_cell = False
+                # Reset current_a_title after processing value cell (it was captured if present)
+                if self.current_a_title:
+                    # Keep it for now - will be used when processing the key-value pair
+                    pass
+        elif tag == 'a':
+            if self.in_a_tag:
+                self.in_a_tag = False
+                # Don't reset current_a_title here - keep it until we process the key-value pair
+                # It will be reset when we process the EOB/REFERENCE key or when starting a new row
+                       
     def handle_data(self, data):
-        if self.in_data_cell:
+        if self.in_data_cell or self.in_key_cell or self.in_value_cell:
             self.cell_data.append(data)
 
 def parse_html_to_json(html_path):
@@ -107,13 +225,90 @@ def parse_html_to_json(html_path):
     parser = HTMLTableParser()
     parser.feed(html_content)
     
+    # Save any remaining claim at end of parsing
+    if parser.current_claim and 'date' in parser.current_claim and parser.current_claim['date']:
+        parser.claims.append(parser.current_claim.copy())
+    
     claims = []
+    
+    # First try mobile-stacked format (key-value pairs)
+    if parser.claims:
+        for claim_data in parser.claims:
+            date_str = claim_data.get('date', '').strip()
+            if not date_str:
+                continue
+            
+            # Skip rows where date doesn't look like a date
+            if not date_str or ('/' not in date_str and '-' not in date_str and len(date_str) < 6):
+                continue
+            
+            formatted_date = normalize_date_to_iso(date_str)
+            if not formatted_date:
+                continue
+            
+            member_raw = claim_data.get('member', '').strip()
+            provider_raw = claim_data.get('provider', '').strip()
+            billed_raw = claim_data.get('billed', '').strip()
+            plan_payment_raw = claim_data.get('plan_payment', '').strip()
+            you_owe_raw = claim_data.get('you_owe', '').strip()
+            status_raw = claim_data.get('status', '').strip()
+            eob_reference_raw = claim_data.get('eob_reference', '').strip()
+            
+            provider = normalize_provider(provider_raw)
+            member = member_raw.title().strip() if member_raw else ''
+            
+            claim = {
+                'Date': formatted_date,
+                'Member': member,
+                'Facility/Physician': provider,
+                'Service': '',
+                'Billed Amt': normalize_amount(billed_raw),
+                'Plan Payment': normalize_amount(plan_payment_raw),
+                'You May Owe': normalize_amount(you_owe_raw),
+                'Status': status_raw
+            }
+            # Add EOB Reference if available (for deduplication only)
+            if eob_reference_raw:
+                claim['EOB Reference'] = eob_reference_raw
+            
+            # Track whether this claim has a PDF icon (has EOB reference)
+            # This will be used later to determine if claim should match PDFs
+            claim['has_pdf_icon'] = bool(eob_reference_raw and eob_reference_raw.strip())
+            
+            claims.append(claim)
+        
+        # Deduplicate claims (may appear twice in HTML due to mobile/desktop views)
+        # Use Date + Facility/Physician + Billed Amt + EOB Reference + Status as unique key
+        # Include Status to better distinguish claims (especially refunds)
+        seen = {}
+        unique_claims = []
+        for claim in claims:
+            # Include EOB reference and Status in key to better distinguish claims
+            eob = claim.get('EOB Reference', '') if 'EOB Reference' in claim else ''
+            status = claim.get('Status', '')
+            key = (claim.get('Date'), claim.get('Facility/Physician'), claim.get('Billed Amt'), eob, status)
+            if key not in seen:
+                seen[key] = True
+                # Remove EOB Reference from final output (it was only used for deduplication)
+                # Keep has_pdf_icon field for use in merging
+                if 'EOB Reference' in claim:
+                    del claim['EOB Reference']
+                unique_claims.append(claim)
+        
+        return unique_claims
+    
+    # Fall back to traditional table format
     for row in parser.rows:
         # Skip rows with insufficient columns or header rows
         if len(row) < 6 or row[1] == 'Date':
             continue
         
         date_str = row[1].strip()
+        # Skip rows where date doesn't look like a date (e.g., just a number or empty)
+        # Dates should contain at least a slash or dash separator
+        if not date_str or ('/' not in date_str and '-' not in date_str and len(date_str) < 6):
+            continue
+        
         member_raw = row[2].strip() if len(row) > 2 else ''
         provider_raw = row[3].strip() if len(row) > 3 else ''
         billed_raw = row[4].strip() if len(row) > 4 else ''
@@ -140,7 +335,17 @@ def parse_html_to_json(html_path):
         }
         claims.append(claim)
     
-    return claims
+    # Deduplicate claims (may appear twice in HTML due to mobile/desktop views)
+    # Use Date + Facility/Physician + Billed Amt as unique key
+    seen = {}
+    unique_claims = []
+    for claim in claims:
+        key = (claim.get('Date'), claim.get('Facility/Physician'), claim.get('Billed Amt'))
+        if key not in seen:
+            seen[key] = True
+            unique_claims.append(claim)
+    
+    return unique_claims
 
 def main():
     """Main entry point"""

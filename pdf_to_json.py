@@ -110,22 +110,57 @@ def parse_pdf_to_json(pdf_path):
                         plan_payment = normalize_amount(amounts[4])
                         you_may_owe = normalize_amount(amounts[10])
                     else:
-                        continue  # Skip this claim if we can't parse amounts
+                        # Try more flexible pattern: any line with 11 dollar amounts
+                        flexible_match = re.search(r'((?:\s+\$[\d,]+\.\d{2}){11})', claim_text)
+                        if flexible_match:
+                            amounts_str = flexible_match.group(1)
+                            amounts = re.findall(r'\$[\d,]+\.\d{2}', amounts_str)
+                            if len(amounts) == 11:
+                                billed = normalize_amount(amounts[0])
+                                plan_payment = normalize_amount(amounts[4])
+                                you_may_owe = normalize_amount(amounts[10])
+                            else:
+                                continue
+                        else:
+                            continue
                 else:
-                    # Last resort: try GRAND TOTAL (but only as fallback)
-                    grand_total_match = re.search(r'GRAND TOTAL.*?((?:\s+\$[\d,]+\.\d{2}){11})', claim_text)
-                    if grand_total_match:
-                        amounts_str = grand_total_match.group(1)
+                    # Try more flexible pattern: any line with 11 dollar amounts in the claim section
+                    flexible_match = re.search(r'((?:\s+\$[\d,]+\.\d{2}){11})', claim_text)
+                    if flexible_match:
+                        amounts_str = flexible_match.group(1)
                         amounts = re.findall(r'\$[\d,]+\.\d{2}', amounts_str)
-                        
                         if len(amounts) == 11:
                             billed = normalize_amount(amounts[0])
                             plan_payment = normalize_amount(amounts[4])
                             you_may_owe = normalize_amount(amounts[10])
                         else:
-                            continue  # Skip this claim if we can't parse amounts
+                            # Last resort: try GRAND TOTAL (but only as fallback)
+                            grand_total_match = re.search(r'GRAND TOTAL.*?((?:\s+\$[\d,]+\.\d{2}){11})', claim_text)
+                            if grand_total_match:
+                                amounts_str = grand_total_match.group(1)
+                                amounts = re.findall(r'\$[\d,]+\.\d{2}', amounts_str)
+                                if len(amounts) == 11:
+                                    billed = normalize_amount(amounts[0])
+                                    plan_payment = normalize_amount(amounts[4])
+                                    you_may_owe = normalize_amount(amounts[10])
+                                else:
+                                    continue
+                            else:
+                                continue
                     else:
-                        continue  # Skip claims without totals
+                        # Last resort: try GRAND TOTAL (but only as fallback)
+                        grand_total_match = re.search(r'GRAND TOTAL.*?((?:\s+\$[\d,]+\.\d{2}){11})', claim_text)
+                        if grand_total_match:
+                            amounts_str = grand_total_match.group(1)
+                            amounts = re.findall(r'\$[\d,]+\.\d{2}', amounts_str)
+                            if len(amounts) == 11:
+                                billed = normalize_amount(amounts[0])
+                                plan_payment = normalize_amount(amounts[4])
+                                you_may_owe = normalize_amount(amounts[10])
+                            else:
+                                continue
+                        else:
+                            continue  # Skip claims without totals
             
             # Extract provider information
             provider_match = re.search(r'Provider:\s*([A-Z\s&.,]+?)\s+Processed', claim_text)
