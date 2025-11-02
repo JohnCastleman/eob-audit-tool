@@ -4,9 +4,10 @@ Tool 4: Merge JSON files
 Combines multiple JSON claim files into a single composite JSON with source tracking.
 
 Usage:
-    python merge_json.py <json1.json> <json2.json> ... [output.json]
+    python merge_json.py <json1.json> <json2.json> ... [output.json] [--force]
     
     If output.json is not specified, outputs to stdout.
+    --force: Overwrite existing output file.
 """
 
 import json
@@ -93,8 +94,14 @@ def main():
     sources = []
     output_path = None
     
-    # Process args - all .json files except the last one are inputs
+    # Parse arguments
+    force = False
     args = sys.argv[1:]
+    
+    # Extract --force flag
+    if '--force' in args:
+        force = True
+        args = [arg for arg in args if arg != '--force']
     
     if not args:
         print("Error: No arguments provided", file=sys.stderr)
@@ -124,6 +131,11 @@ def main():
     # If last arg doesn't look like output JSON, set it anyway
     if Path(output_path).suffix != '.json':
         print(f"Warning: Output path doesn't end with .json: {output_path}", file=sys.stderr)
+    
+    # Check if output file exists and skip unless --force
+    if output_path and Path(output_path).exists() and not force:
+        print(f"Skipping {output_path} (already exists, use --force to overwrite)", file=sys.stderr)
+        sys.exit(0)
     
     # Merge claims
     merged_claims, sub_files = merge_claims(json_files, sources)

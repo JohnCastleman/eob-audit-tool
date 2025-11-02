@@ -93,13 +93,14 @@ def generate_markdown_from_json(json_data, title, include_source_col=False, sort
 def main():
     """Main entry point"""
     if len(sys.argv) < 2:
-        print("Usage: python json_to_md.py <input.json> [output.md] [--title TITLE] [--composite]", file=sys.stderr)
+        print("Usage: python json_to_md.py <input.json> [output.md] [--title TITLE] [--composite] [--force]", file=sys.stderr)
         sys.exit(1)
     
     json_path = sys.argv[1]
     output_path = None
     title = None
     composite = False
+    force = False
     
     # Parse arguments
     i = 2
@@ -109,6 +110,9 @@ def main():
             i += 2
         elif sys.argv[i] == '--composite':
             composite = True
+            i += 1
+        elif sys.argv[i] == '--force':
+            force = True
             i += 1
         elif not sys.argv[i].startswith('--'):
             output_path = sys.argv[i]
@@ -134,6 +138,11 @@ def main():
     # Check for composite metadata
     include_source_col = '_composite' in json_path or composite
     sub_files = data.get('sub_files', []) if isinstance(data, dict) else None
+    
+    # Check if output file exists and skip unless --force
+    if output_path and Path(output_path).exists() and not force:
+        print(f"Skipping {output_path} (already exists, use --force to overwrite)", file=sys.stderr)
+        sys.exit(0)
     
     # Generate markdown
     md_content = generate_markdown_from_json(

@@ -179,11 +179,29 @@ def parse_pdf_to_json(pdf_path):
 def main():
     """Main entry point"""
     if len(sys.argv) < 2:
-        print("Usage: python pdf_to_json.py <input.pdf> [output.json]", file=sys.stderr)
+        print("Usage: python pdf_to_json.py <input.pdf> [output.json] [--force]", file=sys.stderr)
         sys.exit(1)
     
     pdf_path = sys.argv[1]
-    output_path = sys.argv[2] if len(sys.argv) > 2 else None
+    output_path = None
+    force = False
+    
+    # Parse arguments
+    i = 2
+    while i < len(sys.argv):
+        if sys.argv[i] == '--force':
+            force = True
+            i += 1
+        elif not sys.argv[i].startswith('--'):
+            output_path = sys.argv[i]
+            i += 1
+        else:
+            i += 1
+    
+    # Check if output file exists and skip unless --force
+    if output_path and Path(output_path).exists() and not force:
+        print(f"Skipping {output_path} (already exists, use --force to overwrite)", file=sys.stderr)
+        sys.exit(0)
     
     claims = parse_pdf_to_json(pdf_path)
     json_output = json.dumps(claims, indent=2)

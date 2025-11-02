@@ -4,9 +4,10 @@ Tool 5: Complete EOB Audit Processing
 Orchestrates the entire EOB processing pipeline.
 
 Usage:
-    python process_eob_audit.py <directory>
+    python process_eob_audit.py <directory> [--force]
 
 Processes all HTML and PDF files in a directory, generates individual and composite outputs.
+--force: Pass --force to individual tools to overwrite existing output files.
 """
 
 import os
@@ -22,7 +23,7 @@ def find_tool_path(tool_name):
         return str(tool_path)
     return tool_name  # Fallback to PATH
 
-def process_directory(directory):
+def process_directory(directory, force=False):
     """Process all HTML and PDF files in a directory"""
     directory = Path(directory)
     
@@ -48,8 +49,11 @@ def process_directory(directory):
         json_file = directory / f"{html_file.stem}.json"
         
         # Run html_to_json.py
+        cmd = [sys.executable, html_to_json_tool, str(html_file), str(json_file)]
+        if force:
+            cmd.append('--force')
         result = subprocess.run(
-            [sys.executable, html_to_json_tool, str(html_file), str(json_file)],
+            cmd,
             capture_output=True,
             text=True
         )
@@ -58,18 +62,28 @@ def process_directory(directory):
             print(f"    ERROR: {result.stderr}", file=sys.stderr)
             continue
         
+        # Show skip message if output was written to stderr (skip message)
+        if result.stderr and 'Skipping' in result.stderr:
+            print(f"    {result.stderr.strip()}")
+            continue
+        
         all_json_files.append(str(json_file))
         
         # Run json_to_md.py
         md_file = directory / f"{html_file.stem}.md"
+        cmd = [sys.executable, json_to_md_tool, str(json_file), str(md_file)]
+        if force:
+            cmd.append('--force')
         result = subprocess.run(
-            [sys.executable, json_to_md_tool, str(json_file), str(md_file)],
+            cmd,
             capture_output=True,
             text=True
         )
         
         if result.returncode != 0:
             print(f"    ERROR: {result.stderr}", file=sys.stderr)
+        elif result.stderr and 'Skipping' in result.stderr:
+            print(f"    {result.stderr.strip()}")
         else:
             all_md_files.append(str(md_file))
             with open(json_file, 'r') as f:
@@ -83,8 +97,11 @@ def process_directory(directory):
         json_file = directory / f"{pdf_file.stem}.json"
         
         # Run pdf_to_json.py
+        cmd = [sys.executable, pdf_to_json_tool, str(pdf_file), str(json_file)]
+        if force:
+            cmd.append('--force')
         result = subprocess.run(
-            [sys.executable, pdf_to_json_tool, str(pdf_file), str(json_file)],
+            cmd,
             capture_output=True,
             text=True
         )
@@ -93,18 +110,28 @@ def process_directory(directory):
             print(f"    ERROR: {result.stderr}", file=sys.stderr)
             continue
         
+        # Show skip message if output was written to stderr (skip message)
+        if result.stderr and 'Skipping' in result.stderr:
+            print(f"    {result.stderr.strip()}")
+            continue
+        
         all_json_files.append(str(json_file))
         
         # Run json_to_md.py
         md_file = directory / f"{pdf_file.stem}.md"
+        cmd = [sys.executable, json_to_md_tool, str(json_file), str(md_file)]
+        if force:
+            cmd.append('--force')
         result = subprocess.run(
-            [sys.executable, json_to_md_tool, str(json_file), str(md_file)],
+            cmd,
             capture_output=True,
             text=True
         )
         
         if result.returncode != 0:
             print(f"    ERROR: {result.stderr}", file=sys.stderr)
+        elif result.stderr and 'Skipping' in result.stderr:
+            print(f"    {result.stderr.strip()}")
         else:
             all_md_files.append(str(md_file))
             with open(json_file, 'r') as f:
@@ -119,14 +146,20 @@ def process_directory(directory):
         
         # Run merge_json.py
         composite_json = directory / f"{folder_name}_composite.json"
+        cmd = [sys.executable, merge_json_tool] + all_json_files + [str(composite_json)]
+        if force:
+            cmd.append('--force')
         result = subprocess.run(
-            [sys.executable, merge_json_tool] + all_json_files + [str(composite_json)],
+            cmd,
             capture_output=True,
             text=True
         )
         
         if result.returncode != 0:
             print(f"    ERROR: {result.stderr}", file=sys.stderr)
+        elif result.stderr and 'Skipping' in result.stderr:
+            print(f"    {result.stderr.strip()}")
+            return  # Can't continue without composite JSON
         else:
             # Update title in composite JSON
             import json
@@ -138,14 +171,19 @@ def process_directory(directory):
             
             # Run json_to_md.py with composite flag
             composite_md = directory / f"{folder_name}.md"
+            cmd = [sys.executable, json_to_md_tool, str(composite_json), str(composite_md), '--composite']
+            if force:
+                cmd.append('--force')
             result = subprocess.run(
-                [sys.executable, json_to_md_tool, str(composite_json), str(composite_md), '--composite'],
+                cmd,
                 capture_output=True,
                 text=True
             )
             
             if result.returncode != 0:
                 print(f"    ERROR: {result.stderr}", file=sys.stderr)
+            elif result.stderr and 'Skipping' in result.stderr:
+                print(f"    {result.stderr.strip()}")
             else:
                 print(f"    -> {len(composite_data['claims'])} total claims -> {composite_md.name}")
                 print(f"       PDF only: {sum(1 for c in composite_data['claims'] if c.get('In PDF/HTML?') == 'PDF')}")
@@ -158,15 +196,18 @@ def process_directory(directory):
 def main():
     """Main entry point"""
     if len(sys.argv) < 2:
-        print("Usage: python process_eob_audit.py <directory>", file=sys.stderr)
+        print("Usage: python process_eob_audit.py <directory> [--force]", file=sys.stderr)
         sys.exit(1)
     
     directory = sys.argv[1]
+    force = '--force' in sys.argv
     
     print(f"EOB Audit Tool - Processing: {directory}")
+    if force:
+        print("Force mode: will overwrite existing files")
     print("=" * 60)
     
-    process_directory(directory)
+    process_directory(directory, force=force)
     
     print("=" * 60)
     print("Done!")

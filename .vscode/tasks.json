@@ -33,12 +33,46 @@
             }
         },
         {
+            "label": "Convert PDF to JSON (save to file) with overwrite",
+            "detail": "Overwriting output file, if it already exists",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "pdf_to_json.py",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.json",
+                "--force"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
             "label": "Convert Selected PDF to JSON",
             "type": "shell",
             "command": "python",
             "args": [
                 "pdf_to_json.py",
                 "${input:pdfFile}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Convert Selected PDF to JSON with overwrite",
+            "detail": "Overwriting output file, if it already exists",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "pdf_to_json.py",
+                "${input:pdfFile}",
+                "--force"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -78,12 +112,46 @@
             }
         },
         {
+            "label": "Convert HTML to JSON (save to file) with overwrite",
+            "detail": "Overwriting output file, if it already exists",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "html_to_json.py",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.json",
+                "--force"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
             "label": "Convert Selected HTML to JSON",
             "type": "shell",
             "command": "python",
             "args": [
                 "html_to_json.py",
                 "${input:htmlFile}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Convert Selected HTML to JSON with overwrite",
+            "detail": "Overwriting output file, if it already exists",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "html_to_json.py",
+                "${input:htmlFile}",
+                "--force"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -123,12 +191,46 @@
             }
         },
         {
+            "label": "Convert JSON to Markdown (save to file) with overwrite",
+            "detail": "Overwriting output file, if it already exists",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "json_to_md.py",
+                "${file}",
+                "${fileDirname}/${fileBasenameNoExtension}.md",
+                "--force"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
             "label": "Convert Selected JSON to Markdown",
             "type": "shell",
             "command": "python",
             "args": [
                 "json_to_md.py",
                 "${input:jsonFile}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared"
+            }
+        },
+        {
+            "label": "Convert Selected JSON to Markdown with overwrite",
+            "detail": "Overwriting output file, if it already exists",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "json_to_md.py",
+                "${input:jsonFile}",
+                "--force"
             ],
             "problemMatcher": [],
             "presentation": {
@@ -152,12 +254,46 @@
             }
         },
         {
+            "label": "Process EOB Audit Directory with overwrite",
+            "detail": "Overwriting output files, if they already exist",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "process_eob_audit.py",
+                "${fileDirname}",
+                "--force"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
             "label": "Process EOB Audit Directory (manual)",
             "type": "shell",
             "command": "python",
             "args": [
                 "process_eob_audit.py",
                 "${input:directoryPath}"
+            ],
+            "problemMatcher": [],
+            "presentation": {
+                "reveal": "always",
+                "panel": "shared",
+                "focus": false
+            }
+        },
+        {
+            "label": "Process EOB Audit Directory (manual) with overwrite",
+            "detail": "Overwriting output files, if they already exist",
+            "type": "shell",
+            "command": "python",
+            "args": [
+                "process_eob_audit.py",
+                "${input:directoryPath}",
+                "--force"
             ],
             "problemMatcher": [],
             "presentation": {
